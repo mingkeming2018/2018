@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<!--
+	NOTES:
+	1. All tokens are represented by '$' sign in the template.
+	2. You can write your code only wherever mentioned.
+	3. All occurrences of existing tokens will be replaced by their appropriate values.
+	4. Blank lines will be removed automatically.
+	5. Remove unnecessary comments before creating your template.
+-->
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="authoring-tool" content="Adobe_Animate_CC">
+<audio id="music" loop="loop" style="display: none;"></audio>  
+<title>2018demo1</title>
+<!-- write your code here -->
+<script src="https://code.createjs.com/createjs-2015.11.26.min.js"></script>
+<script type="text/javascript" src="./jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"> 
+<style>
+  html,body{
+		background-size:100% 100%;
+			width:100%;
+            height: 100%;
+			position:fixed;
+			overflow:hidden;
+        }
+        #result h1{
+      text-align: center;
+      vertical-align:middle;
+      margin-top: 50px;
+    }
+    #result table{
+    	margin-top: 30px;
+    }
+			#btn-music-on  { position:absolute; width:30px; top:20px; right:20px; z-index:100; animation:round 2s .5s ease-in-out infinite;}
+		#btn-music-off { position:absolute; width:30px; top:20px; right:20px; z-index:100; opacity:0;}
+		
+		
+		@keyframes round{
+	0%{ transform:rotate(0deg);}
+	
+	100%{ transform:rotate(360deg);}
+}
+
+</style>
+<!-- <script src="zg002.js"></script> -->
+<script src="index.js"></script>
+<script>
+// Global Scripts
+	//页面适配
+var m=0;
+var shuzu = new Array();
+var i=0;
+//页面适配</script>
+<script>
+var canvas, stage, exportRoot, anim_container, dom_overlay_container, fnStartAnimation, container, stageWidth,stageHeight,stageScale,bitmap,leftBtn;
+
+function init() {
+	canvas = document.getElementById("canvas");
+	anim_container = document.getElementById("animation_container");
+	dom_overlay_container = document.getElementById("dom_overlay_container");
+	var comp=AdobeAn.getComposition("254CC04837529741AE82AE936E7AF312");
+	var lib=comp.getLibrary();
+	var loader = new createjs.LoadQueue(false);
+	loader.addEventListener("fileload", function(evt){handleFileLoad(evt,comp)});
+	loader.addEventListener("complete", function(evt){handleComplete(evt,comp)});
+	var lib=comp.getLibrary();
+	loader.loadManifest(lib.properties.manifest);
+}
+function handleFileLoad(evt, comp) {
+	var images=comp.getImages();	
+	if (evt && (evt.item.type == "image")) { images[evt.item.id] = evt.result; }	
+}
+function handleComplete(evt,comp) {
+	//This function is always called, irrespective of the content. You can use the variable "stage" after it is created in token create_stage.
+	var lib=comp.getLibrary();
+	var ss=comp.getSpriteSheet();
+	var queue = evt.target;
+	var ssMetadata = lib.ssMetadata;
+	for(i=0; i<ssMetadata.length; i++) {
+		ss[ssMetadata[i].name] = new createjs.SpriteSheet( {"images": [queue.getResult(ssMetadata[i].name)], "frames": ssMetadata[i].frames} )
+	}
+	var preloaderDiv = document.getElementById("_preload_div_");
+	preloaderDiv.style.display = 'none';
+	canvas.style.display = 'block';
+	exportRoot = new lib.test();
+	stage = new lib.Stage(canvas);
+	stage.enableMouseOver();	
+	//Registers the "tick" event listener.
+	fnStartAnimation = function() {
+		stage.addChild(exportRoot);
+		createjs.Ticker.setFPS(lib.properties.fps);
+		createjs.Ticker.addEventListener("tick", stageBreakHandler)
+		stage.addEventListener("tick", handleTick)
+		function handleTick(event) {
+			var cameraInstance = exportRoot.___camera___instance;
+			if(cameraInstance)
+			{
+				var stageCenter = { 'x' : lib.properties.width/2, 'y' : lib.properties.height/2 };
+				if(cameraInstance._off != null && cameraInstance._off == true)
+					exportRoot.transformMatrix = new createjs.Matrix2D();
+				else
+				{
+					if(cameraInstance.pinToObject !== undefined)
+					{
+						cameraInstance.x = cameraInstance.pinToObject.x + cameraInstance.pinToObject.pinOffsetX;
+						cameraInstance.y = cameraInstance.pinToObject.y + cameraInstance.pinToObject.pinOffsetY;
+					}
+					var mat = cameraInstance.getMatrix();
+					mat.tx -= stageCenter.x;
+					mat.ty -= stageCenter.y;
+					var inverseMat = mat.invert();
+					inverseMat.prependTransform(stageCenter.x, stageCenter.y, 1, 1, 0, 0, 0, 0, 0);
+					inverseMat.appendTransform(-stageCenter.x, -stageCenter.y, 1, 1, 0, 0, 0, 0, 0);
+					exportRoot.transformMatrix = inverseMat;
+				}
+			}
+		}
+	}	    
+	//Code to support hidpi screens and responsive scaling.
+	function makeResponsive(isResp, respDim, isScale, scaleType) {		
+		var lastW, lastH, lastS=1;		
+		window.addEventListener('resize', resizeCanvas);		
+		resizeCanvas();		
+		function resizeCanvas() {			
+			var w = lib.properties.width, h = lib.properties.height;			
+			var iw = window.innerWidth, ih=window.innerHeight;			
+			var pRatio = window.devicePixelRatio || 1, xRatio=iw/w, yRatio=ih/h, sRatio=1;			
+			if(isResp) {                
+				if((respDim=='width'&&lastW==iw) || (respDim=='height'&&lastH==ih)) {                    
+					sRatio = lastS;                
+				}				
+				else if(!isScale) {					
+					if(iw<w || ih<h)						
+						sRatio = Math.min(xRatio, yRatio);				
+				}				
+				else if(scaleType==1) {					
+					sRatio = Math.min(xRatio, yRatio);				
+				}				
+				else if(scaleType==2) {					
+					sRatio = Math.max(xRatio, yRatio);				
+				}			
+			}			
+			canvas.width = w*pRatio*sRatio;			
+			canvas.height = h*pRatio*sRatio;
+			canvas.style.width = anim_container.style.width = dom_overlay_container.style.width = preloaderDiv.style.width = w*sRatio+'px';				
+			canvas.style.height = anim_container.style.height = dom_overlay_container.style.height = preloaderDiv.style.height = h*sRatio+'px';
+			stage.scaleX = pRatio*sRatio;			
+			stage.scaleY = pRatio*sRatio;			
+			lastW = iw; lastH = ih; lastS = sRatio;            
+			stage.tickOnUpdate = false;            
+			stage.update();            
+			stage.tickOnUpdate = true;		
+		}
+	}
+	makeResponsive(false,'width',false,2);	
+	AdobeAn.compositionLoaded(lib.properties.id);
+	fnStartAnimation();
+}
+function stageBreakHandler(event)
+{
+    if(stageWidth!=document.documentElement.clientWidth||stageHeight!= document.documentElement.clientHeight)
+    {
+        stageWidth =  document.documentElement.clientWidth;
+        stageHeight = document.documentElement.clientHeight;
+
+        stageScale = stageWidth/640;
+        canvas.style.width = 640*stageScale + 'px';
+        canvas.style.height = 1136*stageScale + 'px';
+    }
+    stage.update();
+}
+
+</script>
+<script src="lib/jquery/jquery.min.js"></script>
+
+<link href="lib/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/body.css" rel="stylesheet">
+<!-- write your code here -->
+</head>
+<body onload="init();" style="margin:0px;">
+<div id="uuu" style="border:0px solid blue; height:90%; width:85%;position:fixed;z-index:999999;left:8%;right:auto;top:10px;display:none;">
+	
+	<iframe id="f1" frameborder=0 width=100% height=100% marginheight=0 marginwidth=0 scrolling=yes src=n21.php> </iframe>
+	<img  onclick="eeee()" src="images/chacha.png" style="position:absolute; width:40px; right:0; top:0;">
+</div>
+
+ <div id="uuu2" style="border:0px solid blue; height:90%; width:85%;position:fixed;z-index:999999;left:8%;right:auto;top:10px;display:none">
+	
+	<iframe id="f2" frameborder=0 width=100% height=100% marginheight=0 marginwidth=0 scrolling=yes src=n22.php> </iframe>
+	<img id="btn22" onclick="eeee2()" src="images/chacha.png" style="position:absolute; width:40px; right:0; top:0;">
+</div> 
+<div id="uuu3" style="border:0px solid blue; height:90%; width:85%;position:fixed;z-index:999999;left:8%;right:auto;top:10px;display:none">
+	
+	<iframe id="f3" frameborder=0 width=100% height=100% marginheight=0 marginwidth=0 scrolling=yes src=n23.php> </iframe>
+	<img onclick="eeee3()" src="images/chacha.png" style="position:absolute; width:40px; right:0; top:0;">
+</div> 
+<div id="uuu4" style="border:0px solid blue; height:90%; width:85%;position:fixed;z-index:999999;left:8%;right:auto;top:10px;display:none">
+	
+	<iframe id="f4" frameborder=0 width=100% height=100% marginheight=0 marginwidth=0 scrolling=yes src=n24.php> </iframe>
+	<img  onclick="eeee4()" src="images/chacha.png" style="position:absolute; width:40px; right:0; top:0;">
+</div> 
+
+<div id="uuu5" style="border:0px solid blue; height:90%; width:85%;position:fixed;z-index:999999;left:8%;right:auto;top:10px;display:none">
+	
+	<iframe id="f5" frameborder=0 width=100% height=100% marginheight=0 marginwidth=0 scrolling=yes src=n25.php> </iframe>
+	<img  onclick="eeee5()" src="images/chacha.png" style="position:absolute; width:40px; right:0; top:0;">
+</div> 
+
+<div id="uuu6" style="border:0px solid blue; height:90%; width:85%;position:fixed;z-index:999999;left:8%;right:auto;top:10px;display:none">
+	
+	<iframe id="f6" frameborder=0 width=100% height=100% marginheight=0 marginwidth=0 scrolling=yes src=n26.php> </iframe>
+	<img onclick="eeee6()" src="images/chacha.png" style="position:absolute; width:40px; right:0; top:0;">
+</div> 
+
+<div id="uuu7" style="border:0px solid blue; height:90%; width:85%;position:fixed;z-index:999999;left:8%;right:auto;top:10px;display:none">
+	
+	<iframe id="f7" frameborder=0 width=100% height=100% marginheight=0 marginwidth=0 scrolling=yes src=n27.php> </iframe>
+	<img onclick="eeee7()" src="images/chacha.png" style="position:absolute; width:40px; right:0; top:0;">
+</div> 
+
+<div id="uuu8" style="border:0px solid blue; height:90%; width:85%;position:fixed;z-index:999999;left:8%;right:auto;top:10px;display:none">
+	
+	<iframe id="f8" frameborder=0 width=100% height=100% marginheight=0 marginwidth=0 scrolling=yes src=n28.php> </iframe>
+	<img  onclick="eeee8()" src="images/chacha.png" style="position:absolute; width:40px; right:0; top:0;">
+</div>
+
+<div id="uuu9" style="border:0px solid blue; height:90%; width:85%;position:fixed;z-index:999999;left:8%;right:auto;top:10px;display:none">
+	
+	<iframe id="f9" frameborder=0 width=100% height=100% marginheight=0 marginwidth=0 scrolling=yes src=n29.php> </iframe>
+	<img onclick="eeee9()" src="images/chacha.png" style="position:absolute; width:40px; right:0; top:0;">
+</div> 
+
+<div id="uuu10" style="border:0px solid blue; height:90%; width:85%;position:fixed;z-index:999999;left:8%;right:auto;top:10px;display:none">
+	
+	<iframe id="f10" frameborder=0 width=100% height=100% marginheight=0 marginwidth=0 scrolling=yes src=n210.php> </iframe>
+	<img onclick="eeee10()" src="images/chacha.png" style="position:absolute; width:40px; right:0; top:0;">
+</div> 
+
+<div id="result" style="border:0px solid blue; height:90%; width:85%;position:fixed;z-index:999999;left:8%;right:auto;top:10px;display:none">
+	
+	
+<img onclick="shutres()" src="images/chacha.png" style="width:40px;position:absolute;left:290px;top:0;">
+</div>
+
+<div id="con" style="border:0px solid blue;opacity:0.9;">
+
+	<div id="animation_container" style="background-color:rgba(0, 0, 0, 1.00); width:640px; height:1136px">
+	<div id="btn-music" >
+	<img src="./images/btn_music_on.png"  id="btn-music-on" />
+	<img src="./images/btn_music_off.png"  id="btn-music-off" />
+</div>
+		<canvas id="canvas" width="640" height="1136" style="position: absolute; display: none; background-color:rgba(0, 0, 0, 1.00);"></canvas>
+		<div id="dom_overlay_container" style="pointer-events:none; overflow:hidden; width:640px; height:1136px; position: absolute; left: 0px; top: 0px; display: none;">
+		</div>
+	</div>
+    <div id='_preload_div_' style='position:absolute; top:0; left:0; display: inline-block; height:100%; width: 100%; text-align: center;'>	<span style='display: inline-block; height: 100%; vertical-align: middle;'></span>	<img src=images/_preloader.gif style='vertical-align: middle; max-height: 100%; width:64px;height:64px;'/></div>
+	</div>
+<script type="text/javascript">
+	//获取music元素，并播放
+   var c = document.getElementById("music");
+    c.src = "./images/bgm.mp3";
+    c.play();
+	
+    //处理微信的时候
+    document.addEventListener("WeixinJSBridgeReady", function(){
+        if(typeof WeixinJSBridge == "object"){
+            WeixinJSBridge.invoke("getNetworkType", {}, function(j){
+                c.play();
+            })
+        }
+    });
+	
+//音乐按钮播放暂停
+music_state = 1;
+var element = document.getElementById('btn-music-on');
+   $("#btn-music").on("click", function(){
+    if(music_state){
+        c.pause();
+        music_state = 0;
+		$("#btn-music-on").css("opacity","0")
+		$("#btn-music-off").css("opacity","1")
+		
+    }else{
+        c.play();
+        music_state = 1;
+		$("#btn-music-off").css("opacity","0")
+		$("#btn-music-on").css("opacity","1")
+		
+    }
+});
+   //获取所有隐藏DIV
+var btn2=document.getElementById('btn2');
+var stop2=document.getElementById('stop2');
+var box1=document.getElementById('uuu');
+var box2=document.getElementById('uuu2');
+var box3=document.getElementById('uuu3');
+var box4=document.getElementById('uuu4');
+var box5=document.getElementById('uuu5');
+var box6=document.getElementById('uuu6');
+var box7=document.getElementById('uuu7');
+var box8=document.getElementById('uuu8');
+var box9=document.getElementById('uuu9');
+var box10=document.getElementById('uuu10');
+var con=document.getElementById('con');
+var res=document.getElementById('result');
+
+
+ // 所有点击显示DIV事件
+
+function btn(){ box1.style.display='';body1();con.style.opacity='0.3';var divv= document.getElementById('f1').contentWindow.document.getElementById('video');
+	divv.innerHTML='<video id="v1" controls="controls" x5-playsinline="" playsinline="" webkit-playsinline="" width="100%" height="100%" preload="auto" poster="" x5nativepanel="freewififorvideo_fromvideoelment" src="http://vrvod.oss-cn-beijing.aliyuncs.com/test.mp4" type="application/x-mpegURL" ></video>';}
+function btn22(){ box2.style.display='';body1();con.style.opacity='0.3';var divv2= document.getElementById('f2').contentWindow.document.getElementById('video');
+			 divv2.innerHTML='<video id="v2" controls="" x5-playsinline="" playsinline="" webkit-playsinline="" width="100%" height="100%" preload="auto" poster="" x5nativepanel="freewififorvideo_fromvideoelment" src="http://vrvod.oss-cn-beijing.aliyuncs.com/test.mp4" type="application/x-mpegURL"><video>';}
+function btn3(){ box3.style.display='';body1();con.style.opacity='0.3';var divv3= document.getElementById('f3').contentWindow.document.getElementById('video');
+			 divv3.innerHTML='<video id="v3" controls="" x5-playsinline="" playsinline="" webkit-playsinline="" width="100%" height="300px" preload="auto" poster="" x5nativepanel="freewififorvideo_fromvideoelment" src="http://vrvod.oss-cn-beijing.aliyuncs.com/test.mp4" type="application/x-mpegURL"><video>';}
+function btn4(){ box4.style.display='';body1();con.style.opacity='0.3';var divv4= document.getElementById('f4').contentWindow.document.getElementById('video');
+			 divv4.innerHTML='<video id="v4" controls="" x5-playsinline="" playsinline="" webkit-playsinline="" width="100%" height="300px" preload="auto" poster="" x5nativepanel="freewififorvideo_fromvideoelment" src="http://vrvod.oss-cn-beijing.aliyuncs.com/test.mp4" type="application/x-mpegURL"><video>';}
+function btn5(){ box5.style.display='';body1();con.style.opacity='0.3';var divv5= document.getElementById('f5').contentWindow.document.getElementById('video');
+			 divv5.innerHTML='<video id="v5" controls="" x5-playsinline="" playsinline="" webkit-playsinline="" width="100%" height="300px" preload="auto" poster="" x5nativepanel="freewififorvideo_fromvideoelment" src="http://vrvod.oss-cn-beijing.aliyuncs.com/test.mp4" type="application/x-mpegURL"><video>';}
+function btn6(){ box6.style.display='';body1();con.style.opacity='0.3';var divv6= document.getElementById('f6').contentWindow.document.getElementById('video');
+			 divv6.innerHTML='<video id="v6" controls="" x5-playsinline="" playsinline="" webkit-playsinline="" width="100%" height="300px" preload="auto" poster="" x5nativepanel="freewififorvideo_fromvideoelment" src="http://vrvod.oss-cn-beijing.aliyuncs.com/test.mp4" type="application/x-mpegURL"><video>';}	
+function btn7(){ box7.style.display='';body1();con.style.opacity='0.3';var divv7= document.getElementById('f7').contentWindow.document.getElementById('video');
+			 divv7.innerHTML='<video id="v7" controls="" x5-playsinline="" playsinline="" webkit-playsinline="" width="100%" height="300px" preload="auto" poster="" x5nativepanel="freewififorvideo_fromvideoelment" src="http://vrvod.oss-cn-beijing.aliyuncs.com/test.mp4" type="application/x-mpegURL"><video>';}	
+ function btn8(){ box8.style.display='';body1();con.style.opacity='0.3';var divv8= document.getElementById('f8').contentWindow.document.getElementById('video');
+			 divv8.innerHTML='<video id="v8" controls="" x5-playsinline="" playsinline="" webkit-playsinline="" width="100%" height="300px" preload="auto" poster="" x5nativepanel="freewififorvideo_fromvideoelment" src="http://vrvod.oss-cn-beijing.aliyuncs.com/test.mp4" type="application/x-mpegURL"><video>';}	
+function btn9(){ box9.style.display='';body1();con.style.opacity='0.3';var divv9= document.getElementById('f9').contentWindow.document.getElementById('video');
+			 divv9.innerHTML='<video id="v9" controls="" x5-playsinline="" playsinline="" webkit-playsinline="" width="100%" height="300px" preload="auto" poster="" x5nativepanel="freewififorvideo_fromvideoelment" src="http://vrvod.oss-cn-beijing.aliyuncs.com/test.mp4" type="application/x-mpegURL"><video>';} 
+function btn10(){ box10.style.display='';body1();con.style.opacity='0.3';var divv10= document.getElementById('f10').contentWindow.document.getElementById('video');
+			 divv10.innerHTML='<video id="v10" controls="" x5-playsinline="" playsinline="" webkit-playsinline="" width="100%" height="300px" preload="auto" poster="" x5nativepanel="freewififorvideo_fromvideoelment" src="http://vrvod.oss-cn-beijing.aliyuncs.com/test.mp4" type="application/x-mpegURL"><video>';}
+function res1(){ res.style.display='';body1();con.style.opacity='0.3';}
+
+ // 所有点击隐藏DIV事件
+ function eeee(){ box1.style.display='none';con.style.opacity='0.9';var test = document.getElementById('f1').contentWindow.document.getElementById('v1');
+ 			test.pause();body2(); test.remove();m=0;c.play();}
+ function eeee2(){ box2.style.display='none';con.style.opacity='0.9';var test2 = document.getElementById('f2').contentWindow.document.getElementById('v2');
+ 			test2.pause();body2();test2.remove();m=0;c.play();}
+ function eeee3(){ box3.style.display='none';con.style.opacity='0.9';var test3 = document.getElementById('f3').contentWindow.document.getElementById('v3');
+ 			test3.pause();body2(); test3.remove();m=0;c.play();}
+function eeee4(){ box4.style.display='none';con.style.opacity='0.9';var test4 = document.getElementById('f4').contentWindow.document.getElementById('v4');
+ 			test4.pause();body2(); test4.remove();m=0;c.play();}
+function eeee5(){ box5.style.display='none';con.style.opacity='0.9';var test5 = document.getElementById('f5').contentWindow.document.getElementById('v5');
+ 			test5.pause();body2(); test5.remove();m=0;c.play();}
+function eeee6(){ box6.style.display='none';con.style.opacity='0.9';var test6 = document.getElementById('f6').contentWindow.document.getElementById('v6');
+ 			test6.pause();body2(); test6.remove();m=0;c.play();}
+function eeee7(){ box7.style.display='none';con.style.opacity='0.9';var test7 = document.getElementById('f7').contentWindow.document.getElementById('v7');
+ 			test7.pause();body2(); test7.remove();m=0;c.play();}
+function eeee8(){ box8.style.display='none';con.style.opacity='0.9';var test8 = document.getElementById('f8').contentWindow.document.getElementById('v8');
+ 			test8.pause();body2(); test8.remove();m=0;c.play();}
+function eeee9(){ box9.style.display='none';con.style.opacity='0.9';var test9 = document.getElementById('f9').contentWindow.document.getElementById('v9');
+ 			test9.pause();body2(); test9.remove();m=0;c.play();}
+function eeee10(){ box10.style.display='none';con.style.opacity='0.9';var test10 = document.getElementById('f10').contentWindow.document.getElementById('v10');
+ 			test10.pause();body2(); test10.remove();m=0;c.play();}
+function shutres(){ res.style.display='none';body2();con.style.opacity='0.9';m=0;c.play();}
+//2种背景状态
+function body1(){document.body.style.backgroundColor="#000000";}
+function body2(){document.body.style.backgroundColor="";}
+	</script>
+	
+	
+	</body>
+</html>
